@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 繪圖提示詞探索實驗室</title>
+  <style>
+    :root {
+      /* 依據黃昭智老師角色設定圖提取之專業調色盤 */
+      --bg-warm: #f7f3eb;            /* 溫暖米底背景 */
+      --card-bg: #ffffff;            /* 卡片白底 */
+      --accent-vest: #e8dcc6;        /* 米色工裝背心色 */
+      --accent-vest-light: #f6efe2;  /* 背心淺米色 */
+      --accent-brown: #8f583f;       /* 暖棕色點綴 */
+      --accent-brown-hover: #75442f;
+      --navy-blue: #2c4468;          /* 深藍鞋 / 探索深藍主色 */
+      --navy-light: #e6edf7;
+      --cargo-olive: #697063;        /* 軍綠工裝灰綠 */
+      --dark-hair: #26282a;          /* 深髮黑 */
+      --label-yellow: #f8e5c2;       /* 設定圖中的筆刷標籤黃 */
+      --label-yellow-dark: #66461a;
+      --border-color: #e5ded2;
+      --text-main: #2a2c2e;
+      --text-muted: #6e7278;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 2px 6px rgba(44, 68, 104, 0.06);
+      --shadow-md: 0 8px 20px rgba(44, 68, 104, 0.08);
+      --shadow-lg: 0 14px 30px rgba(44, 68, 104, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang TC", "Noto Sans TC", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-warm);
+      color: var(--text-main);
+      line-height: 1.55;
+      padding: 20px;
+      background-image: 
+        radial-gradient(#e5ded2 1px, transparent 1px),
+        radial-gradient(#e5ded2 1px, var(--bg-warm) 1px);
+      background-size: 32px 32px;
+      background-position: 0 0, 16px 16px;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* 頂部導覽英雄看板 */
+    .hero-banner {
+      background: linear-gradient(135deg, #ffffff 0%, var(--accent-vest-light) 100%);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px 32px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 32px;
+    }
+
+    .hero-banner::after {
+      content: "";
+      position: absolute;
+      right: -30px;
+      bottom: -30px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(232, 220, 198, 0.45) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      flex: 1;
+      max-width: 760px;
+      z-index: 1;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--label-yellow);
+      color: var(--label-yellow-dark);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 4px rgba(102, 70, 26, 0.1);
+    }
+
+    .hero-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--navy-blue);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.5px;
+    }
+
+    .hero-subtitle {
+      font-size: 1.02rem;
+      color: var(--cargo-olive);
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+
+    .hero-mascot-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 24px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--accent-brown);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .hero-art-showcase {
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-art-card {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 3px solid var(--accent-vest);
+      box-shadow: 0 10px 25px rgba(44, 68, 104, 0.14);
+      background: #fbf9f6;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .hero-art-card:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 14px 30px rgba(44, 68, 104, 0.2);
+    }
+
+    .hero-art-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-art-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(44, 68, 104, 0.88);
+      backdrop-filter: blur(4px);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    @media (max-width: 900px) {
+      .hero-banner {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 20px;
+        padding: 24px 20px;
+      }
+      .hero-title {
+        justify-content: center;
+      }
+      .hero-art-card {
+        width: 170px;
+        height: 170px;
+      }
+    }
+
+    /* 主網格版面配置 */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 1fr 430px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 左側選擇區 */
+    .controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--border-color);
+      padding: 22px;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s;
+    }
+    .card:hover {
+      border-color: #d1c5b0;
+    }
+
+    .card-title {
+      font-size: 1.12rem;
+      font-weight: 800;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--navy-blue);
+    }
+
+    .card-title .brush-badge {
+      font-size: 0.76rem;
+      background: var(--label-yellow);
+      color: var(--label-yellow-dark);
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+
+    /* 主題輸入區 */
+    .subject-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input-text {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      outline: none;
+      background: #fafaf9;
+      color: var(--dark-hair);
+      transition: all 0.2s;
+    }
+    .input-text:focus {
+      background: #ffffff;
+      border-color: var(--navy-blue);
+      box-shadow: 0 0 0 3px rgba(44, 68, 104, 0.12);
+    }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .preset-label {
+      font-size: 0.85rem;
+      color: var(--accent-brown);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .chip-btn {
+      background: var(--bg-warm);
+      border: 1px solid var(--border-color);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: var(--text-main);
+      font-weight: 500;
+      transition: all 0.18s ease;
+    }
+    .chip-btn:hover {
+      background: var(--accent-vest);
+      color: var(--dark-hair);
+      transform: translateY(-1px);
+    }
+
+    /* 選項標籤群組 */
+    .tag-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 9px;
+    }
+
+    .tag-btn {
+      background: #faf9f6;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
+      padding: 9px 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: relative;
+    }
+
+    .tag-btn:hover {
+      background: #ffffff;
+      border-color: #b8ac97;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+    }
+
+    .tag-btn.active {
+      background: #fdfaf4;
+      border-color: var(--accent-brown);
+      box-shadow: 0 0 0 1.5px var(--accent-brown), 0 4px 10px rgba(143, 88, 63, 0.12);
+    }
+
+    .tag-btn .name-zh {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .tag-btn.active .name-zh {
+      color: var(--accent-brown);
+    }
+
+    .tag-btn .name-en {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tag-btn.active .name-en {
+      color: #603c2b;
+      font-weight: 600;
+    }
+
+    /* 畫面文字位置與字體按鈕 */
+    .text-pos-grid, .text-style-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .pos-btn, .font-style-btn {
+      background: #faf9f6;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 7px 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .pos-btn:hover, .font-style-btn:hover {
+      background: #ffffff;
+      border-color: #b8ac97;
+      transform: translateY(-1px);
+    }
+
+    .pos-btn.active, .font-style-btn.active {
+      background: var(--navy-light);
+      border-color: var(--navy-blue);
+      box-shadow: 0 0 0 1.2px var(--navy-blue);
+    }
+
+    .pos-btn .pos-zh, .font-style-btn .style-zh {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .pos-btn.active .pos-zh, .font-style-btn.active .style-zh {
+      color: var(--navy-blue);
+    }
+
+    .pos-btn .pos-en, .font-style-btn .style-en {
+      font-size: 0.69rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pos-btn.active .pos-en, .font-style-btn.active .style-en {
+      color: #1e3a5f;
+      font-weight: 600;
+    }
+
+    /* 尺寸按鈕單選組 */
+    .ratio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+      gap: 10px;
+    }
+
+    .ratio-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 8px;
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      background: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ratio-btn:hover {
+      border-color: #b5a995;
+      background: #fbf9f6;
+    }
+    .ratio-btn.active {
+      border-color: var(--navy-blue);
+      background: var(--navy-light);
+      color: var(--navy-blue);
+      font-weight: 800;
+      box-shadow: 0 0 0 1px var(--navy-blue);
+    }
+
+    .ratio-box-preview {
+      display: inline-block;
+      border: 2.2px solid currentColor;
+      border-radius: 2px;
+      margin-bottom: 6px;
+    }
+
+    /* 右側黏貼面板 (Sticky Result Bar) */
+    .result-panel {
+      position: sticky;
+      top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .selected-summary {
+      background: #fbf9f5;
+      border: 1.5px dashed var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      min-height: 52px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .selected-tag {
+      background: var(--label-yellow);
+      color: var(--label-yellow-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .selected-tag button {
+      background: none;
+      border: none;
+      color: var(--accent-brown);
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 0.95rem;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .selected-tag button:hover {
+      color: #b91c1c;
+    }
+
+    .prompt-box {
+      width: 100%;
+      min-height: 135px;
+      padding: 15px;
+      background: #1e2229;
+      color: #f1f4f8;
+      font-family: "Courier New", Courier, Consolas, monospace;
+      font-size: 0.94rem;
+      line-height: 1.6;
+      border-radius: 10px;
+      border: 2px solid #333a46;
+      resize: vertical;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .action-btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--navy-blue);
+      color: white;
+      grid-column: span 2;
+      box-shadow: 0 4px 12px rgba(44, 68, 104, 0.25);
+    }
+    .btn-primary:hover {
+      background: #1e3352;
+      box-shadow: 0 6px 16px rgba(44, 68, 104, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-warm);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: #ebe3d3;
+    }
+
+    .btn-accent {
+      background: #f6eedf;
+      color: var(--accent-brown);
+      border: 1px solid #e1cca7;
+    }
+    .btn-accent:hover {
+      background: #eeddbf;
+    }
+
+    .mode-tabs {
+      display: flex;
+      background: #eee8db;
+      padding: 4px;
+      border-radius: 10px;
+      gap: 4px;
+    }
+
+    .mode-tab {
+      flex: 1;
+      padding: 7px 8px;
+      border: none;
+      background: none;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--cargo-olive);
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .mode-tab.active {
+      background: white;
+      color: var(--navy-blue);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    /* 昭智老師教案小提示 */
+    .teacher-tip-box {
+      font-size: 0.84rem;
+      color: #4a4d52;
+      line-height: 1.55;
+      background: var(--accent-vest-light);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border-left: 4px solid var(--accent-brown);
+    }
+    .teacher-tip-box strong {
+      color: var(--accent-brown);
+    }
+
+
+
+    /* Toast 通知 */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--dark-hair);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+      z-index: 9999;
+      pointer-events: none;
+      border-left: 4px solid var(--label-yellow);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <header class="hero-banner">
+    <div class="hero-art-showcase">
+      <div class="hero-art-card">
+        <img src="polar_bear_painting.jpg" alt="角色正在畫圖" class="hero-art-img">
+      </div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-tag">
+        <span>🎒 視覺藝術 × 資訊科技探索小教室</span>
+      </div>
+      <h1 class="hero-title">
+        <span>🎨 AI 繪圖提示詞探索實驗室</span>
+      </h1>
+      <p class="hero-subtitle">
+        提供給學生與初學者：輸入主題，點選尺寸、媒材、鏡頭視角、藝術流派與光影風格，一鍵組裝高質感的 AI 生圖提示詞！
+      </p>
+    </div>
+  </header>
+
+  <!-- 主內容網格 -->
+  <div class="app-grid">
+    <!-- 左側多維度選單 -->
+    <div class="controls-panel">
+
+      <!-- 1. 核心主題 -->
+      <div class="card">
+        <div class="card-title">
+          <span>✨ 第一步：畫面主題 (Subject)</span>
+          <span class="brush-badge">必填</span>
+        </div>
+        <div class="subject-input-group">
+          <input type="text" id="subjectInput" class="input-text" placeholder="例如：一隻在圖書館看書的可愛小貓 (A cute cat reading a book in library)..." value="A cute British shorthair cat reading a book in a magical warm library">
+          
+          <div class="preset-chips">
+            <span class="preset-label">💡 特選探險靈感：</span>
+            <button class="chip-btn" onclick="setSubject('A friendly explorer teacher with glasses and beige utility vest photographing wildlife in a lush forest')">📷 森林探險攝影師</button>
+            <button class="chip-btn" onclick="setSubject('A cozy ginger cat cuddling with a reading boy on wooden floor, warm sunshine')">🐱 陽光與橘貓相伴</button>
+            <button class="chip-btn" onclick="setSubject('A futuristic school classroom with floating hologram screens and AI robotics')">🤖 未來科技教室</button>
+            <button class="chip-btn" onclick="setSubject('An ancient fantasy castle floating in the sky with clouds and waterfalls')">🏰 天空浮島城堡</button>
+            <button class="chip-btn" onclick="setSubject('A tiny cute astronaut enjoying a cup of coffee on Mars')">🚀 火星咖啡太空人</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 畫面文字 (In-Image Text) -->
+      <div class="card">
+        <div class="card-title">
+          <span>✍️ 第二步：畫面文字 (Text in Image)</span>
+          <span class="brush-badge" style="background:#eef2f6; color:#475569;">選填</span>
+        </div>
+        <div class="subject-input-group">
+          <input type="text" id="inImageTextInput" class="input-text" placeholder="例如：COFFEE SHOP、MAGIC LIBRARY、SUMMER 2027、WELCOME... (若留空則代表不指定文字)" value="">
+          
+          <div class="preset-chips">
+            <span class="preset-label">💡 常用文字範本：</span>
+            <button type="button" class="chip-btn" onclick="setInImageText('COFFEE & CATS')">☕ COFFEE & CATS</button>
+            <button type="button" class="chip-btn" onclick="setInImageText('MAGIC LIBRARY')">📖 MAGIC LIBRARY</button>
+            <button type="button" class="chip-btn" onclick="setInImageText('EXPLORER')">🚀 EXPLORER</button>
+            <button type="button" class="chip-btn" onclick="setInImageText('SUMMER CAMP')">☀️ SUMMER CAMP</button>
+            <button type="button" class="chip-btn" onclick="setInImageText('WELCOME')">✨ WELCOME</button>
+            <button type="button" class="chip-btn" onclick="setInImageText('')" style="color:#b91c1c;">✕ 清空文字</button>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <div style="font-size:0.86rem; font-weight:700; color:var(--navy-blue); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <span>📍 選擇文字出現位置 (Position)：</span>
+            </div>
+            <div class="text-pos-grid" id="textPosGrid"></div>
+          </div>
+
+          <div style="margin-top: 10px;">
+            <div style="font-size:0.86rem; font-weight:700; color:var(--navy-blue); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <span>🔤 選擇字體造型風格 (Typography Style)：</span>
+            </div>
+            <div class="text-style-grid" id="textStyleGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 畫面尺寸與比例 (Aspect Ratio) -->
+      <div class="card">
+        <div class="card-title">
+          <span>📐 第三步：畫面尺寸與長寬比 (Aspect Ratio)</span>
+          <span class="brush-badge">單選</span>
+        </div>
+        <div class="ratio-grid" id="ratioGrid"></div>
+      </div>
+
+      <!-- 4. 繪畫媒材與立體材質 (Medium & Material) -->
+      <div class="card">
+        <div class="card-title">
+          <span>🖌️ 第四步：繪畫媒材與立體材質 (Medium & Material)</span>
+          <span class="brush-badge">多選</span>
+        </div>
+        <div class="tag-grid" id="mediumGrid"></div>
+      </div>
+
+      <!-- 5. 動畫、卡通與漫畫 (Animation & Comics) -->
+      <div class="card">
+        <div class="card-title">
+          <span>🎬 第五步：動畫卡通與工作室風格 (Animation & Studios)</span>
+          <span class="brush-badge">多選</span>
+        </div>
+        <div class="tag-grid" id="animationGrid"></div>
+      </div>
+
+      <!-- 6. 畫面視角與構圖 (Shot & Angle) -->
+      <div class="card">
+        <div class="card-title">
+          <span>📷 第六步：鏡頭角度與構圖 (Camera Angle & Shot)</span>
+          <span class="brush-badge">多選</span>
+        </div>
+        <div class="tag-grid" id="viewGrid"></div>
+      </div>
+
+      <!-- 7. 攝影特色與光影 (Photography & Lighting) -->
+      <div class="card">
+        <div class="card-title">
+          <span>💡 第七步：攝影特色與光影氛圍 (Lighting & Photography)</span>
+          <span class="brush-badge">多選</span>
+        </div>
+        <div class="tag-grid" id="photoGrid"></div>
+      </div>
+
+      <!-- 8. 藝術流派 (Art Movements) -->
+      <div class="card">
+        <div class="card-title">
+          <span>🏛️ 第八步：經典藝術流派 (Art Movements)</span>
+          <span class="brush-badge">多選</span>
+        </div>
+        <div class="tag-grid" id="artMovementGrid"></div>
+      </div>
+
+      <!-- 9. 藝術家與名家大師 (Masters & Artists) -->
+      <div class="card">
+        <div class="card-title">
+          <span>🧑‍🎨 第九步：藝術家風格 (Artist Style)</span>
+          <span class="brush-badge">多選</span>
+        </div>
+        <div class="tag-grid" id="artistGrid"></div>
+      </div>
+
+      <!-- 10. 畫面細節與精細度 (Quality & Render) -->
+      <div class="card">
+        <div class="card-title">
+          <span>💎 第十步：畫質渲染與精細度 (Quality & Modifiers)</span>
+          <span class="brush-badge">多選</span>
+        </div>
+        <div class="tag-grid" id="qualityGrid"></div>
+      </div>
+
+    </div>
+
+    <!-- 右側結果面板 (固定視窗) -->
+    <div class="result-panel">
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between;">
+          <span>📋 生成提示詞 (Prompts)</span>
+          <span id="selectedCountBadge" class="brush-badge">已選 0 項風格</span>
+        </div>
+
+        <!-- 模式切換 Tabs -->
+        <div class="mode-tabs">
+          <button class="mode-tab active" onclick="switchMode('midjourney')">Midjourney 格式</button>
+          <button class="mode-tab" onclick="switchMode('general')">通用英文標籤</button>
+          <button class="mode-tab" onclick="switchMode('bilingual')">教學雙語對照</button>
+        </div>
+
+        <div style="margin: 12px 0 8px;">
+          <div style="font-size: 0.82rem; color: var(--cargo-olive); margin-bottom: 6px; font-weight:600;">
+            已套用風格標籤（點擊 × 可快速取消）：
+          </div>
+          <div class="selected-summary" id="selectedSummary">
+            <span style="font-size:0.82rem; color:#9c978b;">尚未選取額外樣式風格</span>
+          </div>
+        </div>
+
+        <!-- 提示詞文字框 -->
+        <textarea id="promptOutput" class="prompt-box" readonly></textarea>
+
+        <!-- 操作按鈕群 -->
+        <div class="action-btn-group" style="margin-top: 14px;">
+          <button class="btn btn-primary" onclick="copyPrompt()">
+            📋 複製提示詞 (Copy Prompts)
+          </button>
+          <button class="btn btn-accent" onclick="randomInspire()">
+            🎲 隨機靈感驚喜
+          </button>
+          <button class="btn btn-secondary" onclick="clearAllSelections()">
+            🔄 重置所有設定
+          </button>
+        </div>
+
+        <!-- 提示詞創作小秘訣 -->
+        <div class="teacher-tip-box" style="margin-top: 16px;">
+          <strong>🎓 提示詞創作小秘訣：</strong><br>
+          1. <strong>主體具體明確</strong>：先說清楚「誰在做什麼、在哪裡」。<br>
+          2. <strong>黃金搭檔原則</strong>：建議選取 2~3 個風格組合（例如「吉卜力動畫風 + 黃金時刻光線 + 廣角鏡頭」），最容易產出震撼且風格統一的作品！<br>
+          3. 複製後可直接貼到各類 AI 繪圖工具（如 Bing Image Creator, Midjourney, Leonardo.Ai）實作驗證！
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">已成功複製提示詞至剪貼簿！ 🎉</div>
+
+<script>
+  // 尺寸長寬比定義
+  const RATIOS = [
+    { label: "1:1 正方形", value: "1:1", w: 20, h: 20, desc: "IG/頭貼/社群" },
+    { label: "16:9 橫向", value: "16:9", w: 26, h: 15, desc: "電腦桌布/YT" },
+    { label: "9:16 直向", value: "9:16", w: 15, h: 26, desc: "手機桌布/Reels" },
+    { label: "4:3 標準", value: "4:3", w: 22, h: 17, desc: "簡報/標準照片" },
+    { label: "3:4 直式", value: "3:4", w: 17, h: 22, desc: "書籍/活動海報" },
+    { label: "2:1 全景", value: "2:1", w: 28, h: 14, desc: "超寬視野/橫幅" },
+    { label: "21:9 電影", value: "21:9", w: 30, h: 13, desc: "劇院級寬螢幕" }
+  ];
+
+  // 多維度分類詞庫（精選並擴充自 Oxxo Studio 風格大全）
+  const DATA = {
+    medium: [
+      { zh: "水彩畫", en: "watercolor painting" },
+      { zh: "油畫", en: "oil painting" },
+      { zh: "壓克力畫", en: "acrylic painting" },
+      { zh: "色鉛筆手繪", en: "color pencil drawing" },
+      { zh: "鉛筆素描", en: "pencil sketch" },
+      { zh: "炭筆畫", en: "charcoal drawing" },
+      { zh: "粉筆/粉彩", en: "chalk art" },
+      { zh: "蠟筆童趣", en: "crayon drawing" },
+      { zh: "塗鴉手繪", en: "doodle art" },
+      { zh: "麥克筆插畫", en: "marker pen illustration" },
+      { zh: "水墨畫", en: "chinese ink drawing" },
+      { zh: "工筆畫", en: "Gongbi painting" },
+      { zh: "木刻版畫", en: "Woodcut printmaking" },
+      { zh: "3D 立體紙雕", en: "3D paper art, layered papercut" },
+      { zh: "剪紙藝術", en: "paper cutting art" },
+      { zh: "摺紙藝術", en: "origami art" },
+      { zh: "彩繪玻璃", en: "stained glass" },
+      { zh: "馬賽克拼貼", en: "mosaic art" },
+      { zh: "像素點陣圖", en: "pixel art" },
+      { zh: "低多邊形", en: "low poly 3D" },
+      { zh: "黏土公仔", en: "Play-Doh clay style, cute 3D" },
+      { zh: "羊毛氈公仔", en: "felt doll style, fluffy texture" },
+      { zh: "樂高積木", en: "lego style bricks" },
+      { zh: "陶瓷質感", en: "ceramics meterial" },
+      { zh: "木雕溫潤工藝", en: "wood carving craftsmanship" }
+    ],
+    animation: [
+      { zh: "吉卜力工作室", en: "Studio Ghibli style, Hayao Miyazaki" },
+      { zh: "皮克斯動畫", en: "Pixar Animation style, 3D character" },
+      { zh: "迪士尼經典", en: "Walt Disney Animation style" },
+      { zh: "夢工廠動畫", en: "DreamWorks Animation style" },
+      { zh: "新海誠天空感", en: "Makoto Shinkai style, vibrant cloud sky" },
+      { zh: "京都動畫 (京阿尼)", en: "Kyoto Animation style, delicate light" },
+      { zh: "日式黑白漫畫", en: "Japanese Manga style, screen tones" },
+      { zh: "日系清新動漫", en: "Japanese anime aesthetic, clean lines" },
+      { zh: "美式漫畫風", en: "American comic book style, bold ink" },
+      { zh: "2D 扁平卡通", en: "2D flat cartoon illustration" },
+      { zh: "3D 精緻Q版公仔", en: "cute 3D chibi character, isometric" },
+      { zh: "復古 80 年代賽璐珞", en: "80s retro anime style, cel shaded" },
+      { zh: "賽博朋克阿基拉", en: "Akira anime style, cyberpunk neo-Tokyo" },
+      { zh: "熱血漫畫風", en: "shonen manga style, dynamic action lines" }
+    ],
+    views: [
+      { zh: "臉部特寫", en: "facial close-up shot" },
+      { zh: "半身胸像", en: "chest shot, portrait" },
+      { zh: "全身照", en: "full body shot" },
+      { zh: "遠景壯麗全景", en: "far away shot, wide landscape scenery" },
+      { zh: "正面鏡頭", en: "front view" },
+      { zh: "3/4 側面視角", en: "three-quarter side view" },
+      { zh: "仰視鏡頭 (震撼霸氣)", en: "low angle view, bottom up view" },
+      { zh: "俯視鏡頭", en: "high angle view, top down view" },
+      { zh: "鳥瞰視角", en: "bird's-eye view, aerial photography" },
+      { zh: "第一人稱視角", en: "first person POV view" },
+      { zh: "開箱整齊排列", en: "knolling photography, neat flat lay" },
+      { zh: "微距微觀細節", en: "macro lens, extreme fine details" },
+      { zh: "等距立體視角", en: "isometric 3D view" }
+    ],
+    photo: [
+      { zh: "35mm 電影劇照", en: "cinematic photo style, 35mm film still" },
+      { zh: "拍立得復古暖調", en: "Polaroid style, vintage warm tones" },
+      { zh: "富士底片菲林色", en: "Fujifilm superia color, nostalgic" },
+      { zh: "單眼相機高寫實", en: "DSLR photo, shallow depth of field" },
+      { zh: "日落黃金時刻", en: "golden hour lighting, warm sunlight" },
+      { zh: "清晨魔幻時刻", en: "magic hour, blue hour atmosphere" },
+      { zh: "溫柔柔和漫射光", en: "soft diffused lighting, dreamy mood" },
+      { zh: "逆光立體輪廓光", en: "back light, golden rim lighting" },
+      { zh: "夢幻散景光斑", en: "beautiful bokeh, soft blurred background" },
+      { zh: "賽博霓虹夜景", en: "cyberpunk neon glow lighting" },
+      { zh: "戲劇性明暗強光", en: "dramatic chiaroscuro lighting" },
+      { zh: "LOMO 暗角風", en: "LOMO camera style, vignetting" },
+      { zh: "黑白經典攝影", en: "black and white, monochrome film" }
+    ],
+    artMovements: [
+      { zh: "印象派", en: "Impressionism, dappled light" },
+      { zh: "後印象派", en: "Post-Impressionism" },
+      { zh: "超現實主義", en: "Surrealism, dreamlike fantasy" },
+      { zh: "浮世繪", en: "Ukiyo-e style, Japanese traditional print" },
+      { zh: "普普藝術", en: "Pop Art, vibrant colorful screenprint" },
+      { zh: "巴洛克古典", en: "Baroque art, magnificent grandeur" },
+      { zh: "洛可可優雅", en: "Rococo art style, pastel ornate" },
+      { zh: "文藝復興", en: "Renaissance art, harmonious composition" },
+      { zh: "立體派幾何", en: "Cubism, geometric fragmentation" },
+      { zh: "極簡現代主義", en: "Minimalism, clean negative space" },
+      { zh: "點描畫派", en: "Pointillism, optical color mixing" },
+      { zh: "野獸派", en: "Fauvism, wild expressive colors" },
+      { zh: "街頭塗鴉潮牌", en: "street graffiti art, urban mural" },
+      { zh: "新幾何構成", en: "Neo-Geometric art, abstract structures" }
+    ],
+    artists: [
+      { zh: "文森·梵谷 (旋渦筆觸)", en: "in the style of Vincent van Gogh, thick impasto" },
+      { zh: "克洛德·莫內 (睡蓮光彩)", en: "in the style of Claude Monet, shimmering reflections" },
+      { zh: "阿爾豐斯·慕夏 (新藝術流線)", en: "in the style of Alphonse Mucha, art nouveau floral" },
+      { zh: "巴勃羅·畢卡索", en: "in the style of Pablo Picasso" },
+      { zh: "薩爾瓦多·達利 (熔化意象)", en: "in the style of Salvador Dali, surreal distortion" },
+      { zh: "葛飾北齋 (神奈川巨浪)", en: "in the style of Katsushika Hokusai, woodblock wave" },
+      { zh: "奈良美智 (叛逆純真大眼)", en: "in the style of Yoshitomo Nara, big eyes character" },
+      { zh: "草間彌生 (經典無限波點)", en: "in the style of Yayoi Kusama, polka dot infinity" },
+      { zh: "村上隆 (繽紛微笑太陽花)", en: "in the style of Takashi Murakami, superflat smiling flowers" },
+      { zh: "蜷川實花 (濃艷繁花色彩)", en: "in the style of Mika Ninagawa, vibrant hyper-saturated flowers" },
+      { zh: "安迪·沃荷 (普普網版印花)", en: "in the style of Andy Warhol, pop silkscreen" },
+      { zh: "艾瑞·卡爾 (童趣拼貼手感)", en: "in the style of Eric Carle, painted tissue paper collage" }
+    ],
+    quality: [
+      { zh: "極致細節紋理", en: "highly detailed, intricate textures" },
+      { zh: "大師傑作", en: "masterpiece, best quality, award winning" },
+      { zh: "8K 超高分辨率", en: "8k resolution, ultra-sharp focus" },
+      { zh: "4K HDR 高動態對比", en: "4K HDR, rich vivid contrast" },
+      { zh: "Unreal Engine 5 次世代渲染", en: "Unreal Engine 5 render, Octane 3D render" },
+      { zh: "數位概念藝術", en: "concept art, trending on Artstation" }
+    ]
+  };
+
+  // 畫面嵌入文字位置選項
+  const TEXT_POSITIONS = [
+    { id: "top_center", zh: "正上方", en: "at the top center" },
+    { id: "center", zh: "畫面中央", en: "in the center" },
+    { id: "bottom_center", zh: "正下方", en: "at the bottom center" },
+    { id: "top_left", zh: "左上方", en: "at the top left" },
+    { id: "top_right", zh: "右上方", en: "at the top right" },
+    { id: "bottom_left", zh: "左下方", en: "at the bottom left" },
+    { id: "bottom_right", zh: "右下方", en: "at the bottom right" },
+    { id: "on_sign", zh: "木質招牌上", en: "written on a wooden signboard" },
+    { id: "neon_sign", zh: "發光霓虹燈", en: "as a glowing neon sign" },
+    { id: "on_banner", zh: "橫幅布條上", en: "on a decorative banner" },
+    { id: "on_tshirt", zh: "T恤衣服印花", en: "printed on the front of the t-shirt" },
+    { id: "on_book", zh: "書本封面上", en: "embossed on the book cover" }
+  ];
+
+  // 畫面文字字體風格選項
+  const TEXT_STYLES = [
+    { id: "bold", zh: "清晰粗體", en: "bold typography" },
+    { id: "handwritten", zh: "優雅手寫", en: "elegant handwritten calligraphy" },
+    { id: "3d", zh: "3D 立體字", en: "3D embossed typography" },
+    { id: "vintage", zh: "復古字體", en: "vintage retro typography" },
+    { id: "neon", zh: "霓虹發光", en: "glowing neon typography" },
+    { id: "cute", zh: "可愛圓體", en: "cute bubble typography" },
+    { id: "gold", zh: "金色燙金", en: "luxurious gold foil typography" }
+  ];
+
+  // 狀態
+  let selectedRatio = "16:9";
+  let selectedTags = new Set();
+  let selectedTextPos = "top_center";
+  let selectedTextStyle = "bold";
+  let currentMode = "midjourney";
+
+  function initApp() {
+    renderTextPositions();
+    renderTextStyles();
+    renderRatios();
+    renderSection("mediumGrid", DATA.medium);
+    renderSection("animationGrid", DATA.animation);
+    renderSection("viewGrid", DATA.views);
+    renderSection("photoGrid", DATA.photo);
+    renderSection("artMovementGrid", DATA.artMovements);
+    renderSection("artistGrid", DATA.artists);
+    renderSection("qualityGrid", DATA.quality);
+
+    // 預設精選
+    selectedTags.add("Studio Ghibli style, Hayao Miyazaki");
+    selectedTags.add("golden hour lighting, warm sunlight");
+
+    document.getElementById("subjectInput").addEventListener("input", updateOutput);
+    document.getElementById("inImageTextInput").addEventListener("input", updateOutput);
+
+    syncTagButtonsUI();
+    updateOutput();
+  }
+
+  function renderTextPositions() {
+    const container = document.getElementById("textPosGrid");
+    container.innerHTML = "";
+    TEXT_POSITIONS.forEach(p => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `pos-btn ${p.id === selectedTextPos ? "active" : ""}`;
+      btn.onclick = () => {
+        selectedTextPos = p.id;
+        document.querySelectorAll(".pos-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        updateOutput();
+      };
+      btn.innerHTML = `
+        <span class="pos-zh">${p.zh}</span>
+        <span class="pos-en">${p.en}</span>
+      `;
+      container.appendChild(btn);
+    });
+  }
+
+  function renderTextStyles() {
+    const container = document.getElementById("textStyleGrid");
+    container.innerHTML = "";
+    TEXT_STYLES.forEach(s => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `font-style-btn ${s.id === selectedTextStyle ? "active" : ""}`;
+      btn.onclick = () => {
+        selectedTextStyle = s.id;
+        document.querySelectorAll(".font-style-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        updateOutput();
+      };
+      btn.innerHTML = `
+        <span class="style-zh">${s.zh}</span>
+        <span class="style-en">${s.en}</span>
+      `;
+      container.appendChild(btn);
+    });
+  }
+
+  function setInImageText(text) {
+    document.getElementById("inImageTextInput").value = text;
+    updateOutput();
+  }
+
+  function renderRatios() {
+    const container = document.getElementById("ratioGrid");
+    container.innerHTML = "";
+    RATIOS.forEach(r => {
+      const btn = document.createElement("button");
+      btn.className = `ratio-btn ${r.value === selectedRatio ? "active" : ""}`;
+      btn.onclick = () => {
+        selectedRatio = r.value;
+        document.querySelectorAll(".ratio-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        updateOutput();
+      };
+
+      btn.innerHTML = `
+        <span class="ratio-box-preview" style="width:${r.w}px; height:${r.h}px;"></span>
+        <span style="font-size:0.86rem; font-weight:800;">${r.value}</span>
+        <span style="font-size:0.7rem; color:#787265;">${r.desc}</span>
+      `;
+      container.appendChild(btn);
+    });
+  }
+
+  function renderSection(elementId, items) {
+    const container = document.getElementById(elementId);
+    container.innerHTML = "";
+    items.forEach(item => {
+      const btn = document.createElement("button");
+      btn.className = "tag-btn";
+      btn.dataset.en = item.en;
+      btn.dataset.zh = item.zh;
+      btn.onclick = () => toggleTag(item.en, item.zh);
+
+      btn.innerHTML = `
+        <span class="name-zh">${item.zh}</span>
+        <span class="name-en">${item.en}</span>
+      `;
+      container.appendChild(btn);
+    });
+  }
+
+  function toggleTag(en, zh) {
+    if (selectedTags.has(en)) {
+      selectedTags.delete(en);
+    } else {
+      selectedTags.add(en);
+    }
+    syncTagButtonsUI();
+    updateOutput();
+  }
+
+  function syncTagButtonsUI() {
+    document.querySelectorAll(".tag-btn").forEach(btn => {
+      const en = btn.dataset.en;
+      if (selectedTags.has(en)) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+  }
+
+  function findZh(en) {
+    for (const cat in DATA) {
+      const found = DATA[cat].find(item => item.en === en);
+      if (found) return found.zh;
+    }
+    return en;
+  }
+
+  function updateOutput() {
+    const subject = document.getElementById("subjectInput").value.trim() || "A creative masterpiece";
+    const textVal = document.getElementById("inImageTextInput").value.trim();
+    const posObj = TEXT_POSITIONS.find(p => p.id === selectedTextPos) || TEXT_POSITIONS[0];
+    const styleObj = TEXT_STYLES.find(s => s.id === selectedTextStyle) || TEXT_STYLES[0];
+    
+    let textPromptSnippet = "";
+    if (textVal) {
+      textPromptSnippet = `with the ${styleObj.en} text "${textVal}" ${posObj.en}`;
+    }
+
+    const tagsArray = Array.from(selectedTags);
+
+    const summaryContainer = document.getElementById("selectedSummary");
+    const countBadge = document.getElementById("selectedCountBadge");
+    const totalSelectedCount = tagsArray.length + (textVal ? 1 : 0);
+    countBadge.textContent = `已選 ${totalSelectedCount} 項設定`;
+
+    if (tagsArray.length === 0 && !textVal) {
+      summaryContainer.innerHTML = `<span style="font-size:0.82rem; color:#9c978b;">尚未選取額外樣式風格（將以主題核心為主）</span>`;
+    } else {
+      summaryContainer.innerHTML = "";
+      if (textVal) {
+        const textTag = document.createElement("span");
+        textTag.className = "selected-tag";
+        textTag.style.background = "#fef3c7";
+        textTag.style.color = "#92400e";
+        textTag.innerHTML = `✍️ 文字: "${textVal}" (${posObj.zh}) <button type="button" onclick="setInImageText('')" title="清除文字">✕</button>`;
+        summaryContainer.appendChild(textTag);
+      }
+      tagsArray.forEach(en => {
+        const zh = findZh(en);
+        const tagEl = document.createElement("span");
+        tagEl.className = "selected-tag";
+        tagEl.innerHTML = `${zh} <button type="button" onclick="removeTag('${en.replace(/'/g, "\\'")}')" title="移除標籤">✕</button>`;
+        summaryContainer.appendChild(tagEl);
+      });
+    }
+
+    const outputEl = document.getElementById("promptOutput");
+    let result = "";
+
+    const stylePrompts = tagsArray.join(", ");
+    let combinedSegments = [subject];
+    if (textPromptSnippet) {
+      combinedSegments.push(textPromptSnippet);
+    }
+    if (stylePrompts) {
+      combinedSegments.push(stylePrompts);
+    }
+    const combined = combinedSegments.join(", ");
+
+    if (currentMode === "midjourney") {
+      result = `/imagine prompt: ${combined} --ar ${selectedRatio} --v 6.1`;
+    } else if (currentMode === "general") {
+      result = `${combined}, aspect ratio ${selectedRatio}`;
+    } else if (currentMode === "bilingual") {
+      let textExplanation = textVal 
+        ? `✍️ 畫面嵌入文字 (In-Image Text)："${textVal}"\n   位置：${posObj.zh} (${posObj.en})\n   字體：${styleObj.zh} (${styleObj.en})\n\n`
+        : `✍️ 畫面嵌入文字 (In-Image Text)：(無指定文字)\n\n`;
+      let tagsExplanation = tagsArray.map((en, idx) => `  ${idx + 1}. [${findZh(en)}] ➔ ${en}`).join("\n");
+      result = `【AI 繪圖提示詞教學對照表】\n` +
+               `📌 畫面主體 (Subject)：\n   ${subject}\n\n` +
+               textExplanation +
+               `🎨 選用風格特徵 (Selected Styles)：\n${tagsExplanation || '   (無額外風格)'}\n\n` +
+               `📐 長寬比例 (Aspect Ratio)：${selectedRatio}\n\n` +
+               `🚀 指令代碼：\n/imagine prompt: ${combined} --ar ${selectedRatio} --v 6.1`;
+    }
+
+    outputEl.value = result;
+  }
+
+  function removeTag(en) {
+    selectedTags.delete(en);
+    syncTagButtonsUI();
+    updateOutput();
+  }
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll(".mode-tab").forEach(tab => tab.classList.remove("active"));
+    event.target.classList.add("active");
+    updateOutput();
+  }
+
+  function setSubject(text) {
+    document.getElementById("subjectInput").value = text;
+    updateOutput();
+  }
+
+  function copyPrompt() {
+    const text = document.getElementById("promptOutput").value;
+    if (!text) return;
+
+    navigator.clipboard.writeText(text).then(() => {
+      showToast("✅ 已成功複製提示詞至剪貼簿！可直接貼至 AI 生圖工具 🚀");
+    }).catch(err => {
+      const textArea = document.getElementById("promptOutput");
+      textArea.select();
+      document.execCommand("copy");
+      showToast("✅ 已複製提示詞！");
+    });
+  }
+
+  function randomInspire() {
+    selectedTags.clear();
+    const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    
+    // 隨機選 1 個媒材
+    selectedTags.add(pickRandom(DATA.medium).en);
+    // 隨機選 1 個光影
+    if (Math.random() > 0.3) {
+      selectedTags.add(pickRandom(DATA.photo).en);
+    }
+    // 隨機選 1 個視角
+    if (Math.random() > 0.4) {
+      selectedTags.add(pickRandom(DATA.views).en);
+    }
+    // 隨機選 1 個大師或動畫
+    if (Math.random() > 0.5) {
+      selectedTags.add(pickRandom(DATA.artists).en);
+    } else {
+      selectedTags.add(pickRandom(DATA.animation).en);
+    }
+    // 品質標籤
+    selectedTags.add(pickRandom(DATA.quality).en);
+
+    // 隨機尺寸
+    const randomRatio = pickRandom(RATIOS);
+    selectedRatio = randomRatio.value;
+    renderRatios();
+
+    syncTagButtonsUI();
+    updateOutput();
+    showToast("🎲 為你組合了一組驚喜風格！✨");
+  }
+
+  function clearAllSelections() {
+    selectedTags.clear();
+    selectedRatio = "16:9";
+    selectedTextPos = "top_center";
+    selectedTextStyle = "bold";
+    document.getElementById("inImageTextInput").value = "";
+    renderTextPositions();
+    renderTextStyles();
+    renderRatios();
+    syncTagButtonsUI();
+    updateOutput();
+    showToast("🔄 已重置所有風格與比例設定！");
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => {
+      toast.classList.remove("show");
+    }, 2800);
+  }
+
+  window.onload = initApp;
+</script>
+
+</body>
+</html>
